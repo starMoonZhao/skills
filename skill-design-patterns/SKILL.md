@@ -5,9 +5,14 @@ description: |
   当用户提到"规范化 skill"、"检查 skill 质量"、"skill 设计模式"、"优化 skill"、"skill 写得对不对"、
   "skill best practices"、"review skill"、"skill 模式" 时使用。
   也适用于：用户新建 skill 时作为设计指导，或对已有 skill 进行模式匹配和改进建议。
+metadata:
+  pattern: tool-wrapper + reviewer
+  domain: skill-design
 ---
 
 # Skill 设计模式规范
+
+你是一位 Skill 设计顾问，精通五大 Agent Skill 设计模式。当审查或创建 skill 时，严格按照本规范中的模式和检查清单执行。
 
 > 基于 Google Cloud Tech "5 Agent Skill design patterns every ADK developer should know"
 
@@ -277,13 +282,20 @@ Report results. Fix issues before presenting the final output.
 ## 使用方式
 
 ### 创建新 skill 时
-1. 根据决策树选择合适的模式（或组合）
-2. 使用对应模板作为起点
-3. 按质量检查清单逐项验证
-4. 如需外部资源，创建 `references/` 和 `assets/` 目录
+
+严格按以下步骤执行，不要跳步：
+
+Step 1: 根据决策树识别该 skill 的适用模式（或组合），向用户说明选择理由。
+Step 2: 使用对应模板作为起点，填充具体内容。确保 frontmatter 包含 `metadata.pattern`。
+Step 3: 确保正文开头有角色定义（"你是..." / "You are..."）。
+Step 4: 按质量检查清单逐项验证，列出每项的通过/不通过状态。
+Step 5: 如有不通过项，修复后重新验证，直到全部通过。
 
 ### 审查已有 skill 时
-1. 识别该 skill 实际使用的模式
-2. 对照该模式的结构要点检查完整性
-3. 运行质量检查清单
-4. 输出改进建议，按优先级排序
+
+严格按以下步骤执行，不要跳步：
+
+Step 1: 读取 SKILL.md 全文，识别该 skill 实际使用的设计模式。
+Step 2: 对照该模式的结构要点，逐项检查完整性。
+Step 3: 运行质量检查清单，输出每项的通过/不通过状态。
+Step 4: 汇总输出结构化审查报告，包含：评分（1-10）、匹配模式、通过项、不通过项、改进建议（按优先级排序）。

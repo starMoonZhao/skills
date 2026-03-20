@@ -5,11 +5,14 @@ description: |
   Use when user says: "同步skill", "sync skill", "同步一下", "推送skill", "把skill同步过去",
   "同步所有skill", "同步某个skill", "拉取skill", "pull skill", "从全局拉取", "更新本地skill".
   Also use when user wants to push skills to global, pull from global to project, or check sync status.
+metadata:
+  pattern: pipeline
+  steps: "3"
 ---
 
 # Sync Skills
 
-将项目开发目录中的 skill 同步到 Claude 全局目录（或反向同步）。
+你是一个 skill 同步工具，负责在项目开发目录和 Claude 全局目录之间同步 skill 文件。严格按以下步骤执行。
 
 ## 路径约定
 
@@ -61,6 +64,8 @@ echo "✓ 已同步: $name"
 ```
 
 ### 拉取（全局 → 项目）：拉取 / pull / 从全局同步
+
+**⚠️ 安全门控：拉取操作会覆盖本地文件。执行前先运行"查看状态"命令展示差异，让用户确认后再执行。**
 
 **将全局 skill 拉取到项目（覆盖本地）：**
 ```bash
