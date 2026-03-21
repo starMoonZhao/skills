@@ -1,10 +1,10 @@
 ---
 name: sync-skills
 description: |
-  Sync skills between project development directory and Claude global skills directory (~/.claude/skills/).
-  Use when user says: "同步skill", "sync skill", "同步一下", "推送skill", "把skill同步过去",
-  "同步所有skill", "同步某个skill", "拉取skill", "pull skill", "从全局拉取", "更新本地skill".
-  Also use when user wants to push skills to global, pull from global to project, or check sync status.
+  Sync skills between current project root directory and project's .claude/skills/ directory.
+  Use when user says: "同步skill", "sync skill", "同步一下", "推送skill",
+  "同步所有skill", "同步某个skill", "拉取skill", "pull skill", "更新本地skill".
+  Also use when user wants to sync skills to .claude/skills/, pull from .claude/skills/ to project, or check sync status.
 metadata:
   pattern: pipeline
   steps: "3"
@@ -12,115 +12,132 @@ metadata:
 
 # Sync Skills
 
-你是一个 skill 同步工具，负责在项目开发目录和 Claude 全局目录之间同步 skill 文件。严格按以下步骤执行。
+你是一个 skill 同步工具，负责在当前项目根目录下的 skill 开发目录和项目的 `.claude/skills/` 目录之间同步。严格按以下步骤执行。
 
 ## 路径约定
 
 | 用途 | 路径 |
 |------|------|
-| 项目 skill 开发目录 | 当前工作目录下的 `skills/` 子目录，或 `.claude/skills/` |
-| Claude 全局生效目录 | `~/.claude/skills/` |
+| skill 开发目录（源） | 当前项目根目录下的各 `{skill-name}/`（含 SKILL.md、references/、assets/ 等） |
+| Claude 生效目录（目标） | 当前项目根目录下的 `.claude/skills/{skill-name}/` |
 
-## 第一步：确定源目录
+## 第一步：确定目录
 
-运行以下命令检测当前项目的 skill 目录：
+检测当前项目根目录下是否有 skill 子目录，以及 `.claude/skills/` 是否存在：
 
 ```bash
-# 检测可能的 skill 目录
-ls skills/ 2>/dev/null && echo "FOUND: skills/" || \
-ls .claude/skills/ 2>/dev/null && echo "FOUND: .claude/skills/" || \
-echo "NOT FOUND"
-```
+# 检测开发目录中的 skill
+echo "=== 开发目录中的 skill ==="
+for d in */; do
+  [ -f "$d/SKILL.md" ] && echo "  $d"
+done
 
-如果用户没有明确说明目录，优先查找：
-1. `./skills/`（扁平结构，直接包含 skill 子目录）
-2. `./.claude/skills/`（标准 Claude 项目结构）
+# 检测 .claude/skills/ 目录
+if [ -d ".claude/skills" ]; then
+  echo "=== .claude/skills/ 已存在 ==="
+  ls .claude/skills/
+else
+  echo ".claude/skills/ 不存在，将自动创建"
+  mkdir -p .claude/skills
+fi
+```
 
 ## 第二步：根据用户意图选择操作
 
-### 推送（项目 → 全局）：同步 / 推送 / push
+### 推送（开发目录 → .claude/skills/）：同步 / 推送 / push
 
 **同步所有 skill：**
 ```bash
-SOURCE_DIR="skills"  # 或 .claude/skills
-DEST_DIR="$HOME/.claude/skills"
+DEST_DIR=".claude/skills"
 
-for skill_dir in "$SOURCE_DIR"/*/; do
+for skill_dir in */; do
   name=$(basename "$skill_dir")
-  mkdir -p "$DEST_DIR/$name"
-  cp "$skill_dir/SKILL.md" "$DEST_DIR/$name/SKILL.md"
-  echo "✓ 已同步: $name"
+  [ "$name" = ".claude" ] && continue
+  [ "$name" = ".git" ] && continue
+  [ "$name" = ".idea" ] && continue
+  if [ -f "$skill_dir/SKILL.md" ]; then
+    rm -rf "$DEST_DIR/$name"
+    cp -r "$skill_dir" "$DEST_DIR/$name"
+    echo "✓ 已同步: $name"
+  fi
 done
 echo "同步完成"
 ```
 
 **同步单个 skill（用户指定了名称）：**
 ```bash
-SOURCE_DIR="skills"  # 或 .claude/skills
 name="skill-name"   # 替换为实际 skill 名
-mkdir -p "$HOME/.claude/skills/$name"
-cp "$SOURCE_DIR/$name/SKILL.md" "$HOME/.claude/skills/$name/SKILL.md"
+rm -rf ".claude/skills/$name"
+cp -r "$name" ".claude/skills/$name"
 echo "✓ 已同步: $name"
 ```
 
-### 拉取（全局 → 项目）：拉取 / pull / 从全局同步
+### 拉取（.claude/skills/ → 开发目录）：拉取 / pull
 
-**⚠️ 安全门控：拉取操作会覆盖本地文件。执行前先运行"查看状态"命令展示差异，让用户确认后再执行。**
+**⚠️ 安全门控：拉取操作会覆盖开发目录文件。执行前先运行"查看状态"命令展示差异，让用户确认后再执行。**
 
-**将全局 skill 拉取到项目（覆盖本地）：**
 ```bash
-SOURCE_DIR="skills"  # 或 .claude/skills
-GLOBAL_DIR="$HOME/.claude/skills"
+SOURCE_DIR=".claude/skills"
 
-for skill_dir in "$GLOBAL_DIR"/*/; do
+for skill_dir in "$SOURCE_DIR"/*/; do
+  [ -d "$skill_dir" ] || continue
   name=$(basename "$skill_dir")
-  if [ -d "$SOURCE_DIR/$name" ]; then
-    cp "$GLOBAL_DIR/$name/SKILL.md" "$SOURCE_DIR/$name/SKILL.md"
+  if [ -d "$name" ]; then
+    rm -rf "$name"
+    cp -r "$SOURCE_DIR/$name" "$name"
     echo "✓ 已拉取: $name"
   fi
 done
-echo "拉取完成（仅更新本地已有的 skill）"
+echo "拉取完成（仅更新开发目录中已有的 skill）"
 ```
 
 ### 查看状态：哪些 skill 有差异
 
 ```bash
-SOURCE_DIR="skills"
-GLOBAL_DIR="$HOME/.claude/skills"
+DEST_DIR=".claude/skills"
 
 echo "=== Skill 同步状态 ==="
-for skill_dir in "$SOURCE_DIR"/*/; do
+for skill_dir in */; do
   name=$(basename "$skill_dir")
-  local_file="$skill_dir/SKILL.md"
-  global_file="$GLOBAL_DIR/$name/SKILL.md"
+  [ "$name" = ".claude" ] && continue
+  [ "$name" = ".git" ] && continue
+  [ "$name" = ".idea" ] && continue
+  [ -f "$skill_dir/SKILL.md" ] || continue
 
-  if [ ! -f "$global_file" ]; then
-    echo "[ 仅本地 ] $name"
-  elif ! diff -q "$local_file" "$global_file" > /dev/null 2>&1; then
+  dev_file="$skill_dir/SKILL.md"
+  target_file="$DEST_DIR/$name/SKILL.md"
+
+  if [ ! -d "$DEST_DIR/$name" ]; then
+    echo "[ 未同步 ] $name"
+  elif ! diff -rq "$skill_dir" "$DEST_DIR/$name" > /dev/null 2>&1; then
     echo "[ 有差异 ] $name"
   else
     echo "[ 已同步 ] $name"
   fi
 done
 
-# 检查全局有但本地没有的
-for skill_dir in "$GLOBAL_DIR"/*/; do
+# 检查 .claude/skills/ 有但开发目录没有的
+for skill_dir in "$DEST_DIR"/*/; do
+  [ -d "$skill_dir" ] || continue
   name=$(basename "$skill_dir")
-  if [ ! -d "$SOURCE_DIR/$name" ]; then
-    echo "[ 仅全局 ] $name"
+  if [ ! -d "$name" ]; then
+    echo "[ 仅.claude ] $name"
   fi
 done
 ```
 
 ## 执行步骤
 
-1. **先用 Bash 检测源目录**（`ls skills/` 或 `ls .claude/skills/`），确认路径
+1. **检测目录**：确认开发目录中有哪些 skill，`.claude/skills/` 不存在则自动创建
 2. **根据用户意图**（同步/拉取/状态）选择对应命令
 3. **执行命令**，逐行输出同步结果
 4. **汇报结果**：同步了几个 skill，哪些成功，哪些跳过
 
 ## 注意
 
-- 操作前不需要确认，直接执行（用户说同步就同步）
+- 推送操作前不需要确认，直接执行（用户说同步就同步）
+- 拉取操作前必须先展示差异状态，等用户确认
+- 跳过 `.claude`、`.git`、`.idea` 等非 skill 目录
 - 如果源文件不存在，跳过并提示，不报错中断
-- 同步后 skill 立即在新对话中生效
+- 同步整个 skill 目录（含 SKILL.md、references/、assets/ 等所有文件）
+- 同步到 `.claude/skills/` 后，skill 在当前项目中立即生效
