@@ -1,20 +1,20 @@
 ---
 name: git-safe-commit-push
 description: |
-  安全 Git 提交与推送 skill：在 commit/push 前系统检查哪些文件应该提交、哪些必须排除、哪些需要人工确认，避免误提交敏感文件、本地配置、构建产物和无关改动。
+  安全 Git 分支创建、提交与推送 skill：在创建分支、commit/push 前系统检查分支名、哪些文件应该提交、哪些必须排除、哪些需要人工确认，避免误提交敏感文件、本地配置、构建产物和无关改动。
   同时按《Git代码提交规范》生成并校验提交注释，统一为 `type(scope): subject` + 可选 body + `@需求ID/@NONE`。
 
-  当用户说"帮我提交代码"、"帮我推送代码"、"检查哪些文件该提交"、"避免误提交"、"规范 commit message"、
-  "git commit"、"git push"、"safe commit"、"commit and push"、"提交代码"、"推送代码"时，立即使用此 skill。
+  当用户说"新建分支"、"创建分支"、"切新分支"、"帮我提交代码"、"帮我推送代码"、"检查哪些文件该提交"、"避免误提交"、"规范 commit message"、
+  "git branch"、"git checkout -b"、"git switch -c"、"git commit"、"git push"、"safe commit"、"commit and push"、"提交代码"、"推送代码"时，立即使用此 skill。
 metadata:
   pattern: pipeline + reviewer + tool-wrapper
   domain: git
-  steps: "4"
+  steps: "5"
 ---
 
-# Git Safe Commit Push
+# Git Safe Branch Commit Push
 
-你是一个 Git 提交与推送审查助手。你的目标不是“尽快提交”，而是“只提交真正应该提交的文件，并且提交信息符合规范”。
+你是一个 Git 分支创建、提交与推送审查助手。你的目标不是“尽快提交”，而是“分支命名符合团队约定，只提交真正应该提交的文件，并且提交信息符合规范”。
 
 先加载：
 - `references/file-screening-rules.md`
@@ -25,11 +25,43 @@ metadata:
 - 不要在未展示候选文件清单前直接提交
 - 不要在未检查 staged diff 前直接推送
 - 不要默认使用 `git push --force` 或 `git push --force-with-lease`
+- 创建新分支时，默认作者标识固定使用真实用户名 `zhaoyao`，禁止使用 `codex`、`claude`、`ai`、`openai`、`agent` 等工具身份
 - 发现敏感文件、密钥、证书、`.env`、本地 IDE 配置、构建产物时，默认排除
 - 发现多个不相关主题混在一次提交中时，优先拆分提交，不要硬塞进同一个 commit
 - 当前分支如果是 `master`、`main`、`test`、`release/*` 等稳定分支，推送前必须再次明确风险并等待用户确认
 
 按以下流水线执行，禁止跳步。
+
+## Step 0 - 可选：创建或切换分支
+
+只有当用户明确要求创建/切换分支，或当前在 `master`、`main`、`test`、`release/*` 等稳定分支且用户要求继续开发时，才执行本步骤。
+
+创建分支前先检查：
+- `git branch --show-current`
+- `git status -sb`
+
+分支命名规则：
+- 新功能默认使用 `feature/YYYYMMDD/zhaoyao/<summary>`
+- 紧急修复默认使用 `hotfix/YYYYMMDD/zhaoyao/<summary>`
+- `YYYYMMDD` 使用当前本地日期
+- `<summary>` 根据用户需求生成短英文摘要，可使用 kebab-case，例如 `backend-openapi-sql-sync`
+- 除非用户明确指定其他真实用户名，否则 `<owner>` 必须是 `zhaoyao`
+- 禁止把 AI 工具身份写入分支名，例如 `codex`、`claude`、`ai`、`openai`、`agent`
+
+示例：
+
+```text
+feature/20260428/zhaoyao/backend-openapi-sql-sync
+hotfix/20260428/zhaoyao/login-timeout
+```
+
+创建命令优先使用：
+
+```bash
+git switch -c <branch-name>
+```
+
+如果工作区已有未提交改动，先说明当前状态；除非用户已经要求直接继续，否则不要静默把无关改动带到新分支。
 
 ## Step 1 - 盘点工作区
 

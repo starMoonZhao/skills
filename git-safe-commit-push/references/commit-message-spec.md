@@ -134,11 +134,17 @@ feature/YYYYMMDD/<owner>/<summary>
 hotfix/YYYYMMDD/<owner>/<summary>
 ```
 
+执行时对 `<owner>` 做强约束：
+
+- 默认固定使用真实用户名 `zhaoyao`
+- 除非用户明确指定其他真实用户名，否则不要替换成别的值
+- 禁止使用 AI 工具身份，例如 `codex`、`claude`、`ai`、`openai`、`agent`
+
 示例：
 
 ```text
-feature/20250903/zhoudong/addNewFunction
-hotfix/20250903/zhoudong/displayBugFix
+feature/20260428/zhaoyao/backend-openapi-sql-sync
+hotfix/20260428/zhaoyao/login-timeout
 ```
 
 如果当前分支明显不符合团队约定，推送前先提醒用户。
